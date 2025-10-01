@@ -1,0 +1,156 @@
+name: CI/CD Pipeline - Biblioteca Pessoal
+
+# Trigger do pipeline
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Permissões globais
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # Job 1: Build & Test
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      
+    - name: Configurar Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache dependências Maven
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Executar testes e build
+      run: ./mvnw -B verify
+      
+    - name: Upload relatório de testes
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: target/surefire-reports/
+
+  # Job 2: Build & Push Docker Image
+  docker:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      
+    - name: Configurar Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache dependências Maven
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Build aplicação
+      run: ./mvnw -B clean package -DskipTests
+      
+    - name: Login no GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extrair metadados
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}/biblioteca-pessoal
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Build e push da imagem Docker
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Job 3: Deploy to Development
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: docker
+    environment: development
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      
+    - name: Simular deploy para desenvolvimento
+      run: |
+        echo "🚀 Iniciando deploy para ambiente de DESENVOLVIMENTO..."
+        echo "📦 Imagem Docker: ghcr.io/${{ github.repository }}/biblioteca-pessoal:latest"
+        echo "🌐 Ambiente: Development"
+        echo "📊 Status: Deploy simulado com sucesso!"
+        echo "✅ Aplicação disponível em: http://dev.biblioteca-pessoal.com"
+        
+    - name: Notificar sucesso do deploy
+      run: |
+        echo "✅ Deploy para desenvolvimento concluído com sucesso!"
+        echo "🔗 URL: http://dev.biblioteca-pessoal.com"
+        echo "📋 Logs disponíveis no ambiente de desenvolvimento"
+
+  # Job 4: Deploy to Production
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    environment: production
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      
+    - name: Simular deploy para produção
+      run: |
+        echo "🚀 Iniciando deploy para ambiente de PRODUÇÃO..."
+        echo "📦 Imagem Docker: ghcr.io/${{ github.repository }}/biblioteca-pessoal:latest"
+        echo "🌐 Ambiente: Production"
+        echo "🔒 Deploy protegido - Requer aprovação manual"
+        echo "📊 Status: Deploy simulado com sucesso!"
+        echo "✅ Aplicação disponível em: https://biblioteca-pessoal.com"
+        
+    - name: Notificar sucesso do deploy
+      run: |
+        echo "✅ Deploy para produção concluído com sucesso!"
+        echo "🔗 URL: https://biblioteca-pessoal.com"
+        echo "📋 Logs disponíveis no ambiente de produção"
+        echo "🎉 Pipeline CI/CD executado com sucesso!"
