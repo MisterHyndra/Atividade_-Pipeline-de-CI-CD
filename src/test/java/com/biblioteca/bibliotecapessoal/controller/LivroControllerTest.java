@@ -2,78 +2,74 @@ package com.biblioteca.bibliotecapessoal.controller;
 
 import com.biblioteca.bibliotecapessoal.model.Livro;
 import com.biblioteca.bibliotecapessoal.repository.LivroRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureTestMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.http.ResponseEntity;
 
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
-@AutoConfigureTestMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class LivroControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestRestTemplate restTemplate;
 
     @Autowired
     private LivroRepository livroRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Test
-    public void testCriarLivro() throws Exception {
+    public void testCriarLivro() {
         Livro livro = new Livro("O Senhor dos Anéis", "J.R.R. Tolkien", 1954, true);
         
-        mockMvc.perform(MockMvcRequestBuilders
-                .post("/api/livros")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(livro)))
-                .andExpect(MockMvcResultMatchers.status().isCreated())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.titulo").value("O Senhor dos Anéis"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.autor").value("J.R.R. Tolkien"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.anoPublicacao").value(1954))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.lido").value(true))
-                .andDo(print());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Livro> request = new HttpEntity<>(livro, headers);
+        
+        ResponseEntity<Livro> response = restTemplate.postForEntity("/api/livros", request, Livro.class);
+        
+        assertEquals(201, response.getStatusCodeValue());
+        assertNotNull(response.getBody());
+        assertEquals("O Senhor dos Anéis", response.getBody().getTitulo());
+        assertEquals("J.R.R. Tolkien", response.getBody().getAutor());
+        assertEquals(1954, response.getBody().getAnoPublicacao());
+        assertTrue(response.getBody().isLido());
     }
 
     @Test
-    public void testListarLivros() throws Exception {
+    public void testListarLivros() {
         // Criar um livro primeiro
         Livro livro = new Livro("1984", "George Orwell", 1949, false);
         livroRepository.save(livro);
 
-        mockMvc.perform(MockMvcRequestBuilders
-                .get("/api/livros")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$").isArray())
-                .andDo(print());
+        ResponseEntity<Livro[]> response = restTemplate.getForEntity("/api/livros", Livro[].class);
+        
+        assertEquals(200, response.getStatusCodeValue());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().length > 0);
     }
 
     @Test
-    public void testBuscarLivroPorId() throws Exception {
+    public void testBuscarLivroPorId() {
         // Criar um livro primeiro
         Livro livro = new Livro("Dom Casmurro", "Machado de Assis", 1899, true);
         Livro livroSalvo = livroRepository.save(livro);
 
-        mockMvc.perform(MockMvcRequestBuilders
-                .get("/api/livros/" + livroSalvo.getId())
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.titulo").value("Dom Casmurro"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.autor").value("Machado de Assis"))
-                .andDo(print());
+        ResponseEntity<Livro> response = restTemplate.getForEntity("/api/livros/" + livroSalvo.getId(), Livro.class);
+        
+        assertEquals(200, response.getStatusCodeValue());
+        assertNotNull(response.getBody());
+        assertEquals("Dom Casmurro", response.getBody().getTitulo());
+        assertEquals("Machado de Assis", response.getBody().getAutor());
     }
 
     @Test
-    public void testAtualizarLivro() throws Exception {
+    public void testAtualizarLivro() {
         // Criar um livro primeiro
         Livro livro = new Livro("Cem Anos de Solidão", "Gabriel García Márquez", 1967, false);
         Livro livroSalvo = livroRepository.save(livro);
@@ -81,25 +77,27 @@ public class LivroControllerTest {
         // Atualizar o livro
         livroSalvo.setLido(true);
 
-        mockMvc.perform(MockMvcRequestBuilders
-                .put("/api/livros/" + livroSalvo.getId())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(livroSalvo)))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.lido").value(true))
-                .andDo(print());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Livro> request = new HttpEntity<>(livroSalvo, headers);
+
+        ResponseEntity<Livro> response = restTemplate.exchange("/api/livros/" + livroSalvo.getId(), 
+                HttpMethod.PUT, request, Livro.class);
+        
+        assertEquals(200, response.getStatusCodeValue());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().isLido());
     }
 
     @Test
-    public void testDeletarLivro() throws Exception {
+    public void testDeletarLivro() {
         // Criar um livro primeiro
         Livro livro = new Livro("A Arte da Guerra", "Sun Tzu", -500, false);
         Livro livroSalvo = livroRepository.save(livro);
 
-        mockMvc.perform(MockMvcRequestBuilders
-                .delete("/api/livros/" + livroSalvo.getId())
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isNoContent())
-                .andDo(print());
+        ResponseEntity<Void> response = restTemplate.exchange("/api/livros/" + livroSalvo.getId(), 
+                HttpMethod.DELETE, null, Void.class);
+        
+        assertEquals(204, response.getStatusCodeValue());
     }
 }
