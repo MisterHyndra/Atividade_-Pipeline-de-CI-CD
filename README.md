@@ -153,3 +153,4 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ## 👨‍💻 Autor
 
 Desenvolvido como parte da Atividade Prática de CI/CD - Construindo seu Próprio Pipeline de CI/CD.
+Pipeline testado em: 10/01/2025 00:50:14
