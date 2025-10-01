@@ -36,7 +36,7 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
         
     - name: Executar testes e build
-      run: ./mvnw -B verify
+      run: chmod +x ./mvnw && ./mvnw -B verify
       
     - name: Upload relatório de testes
       uses: actions/upload-artifact@v4
@@ -73,7 +73,7 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
         
     - name: Build aplicação
-      run: ./mvnw -B clean package -DskipTests
+      run: chmod +x ./mvnw && ./mvnw -B clean package -DskipTests
       
     - name: Login no GitHub Container Registry
       uses: docker/login-action@v3
