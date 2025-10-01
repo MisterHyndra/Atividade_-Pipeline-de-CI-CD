@@ -29,7 +29,7 @@ jobs:
         distribution: 'temurin'
         
     - name: Cache dependências Maven
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -39,7 +39,7 @@ jobs:
       run: ./mvnw -B verify
       
     - name: Upload relatório de testes
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
@@ -66,7 +66,7 @@ jobs:
         distribution: 'temurin'
         
     - name: Cache dependências Maven
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
